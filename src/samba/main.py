@@ -1,4 +1,3 @@
-import time
 from json import dump
 from iopy.read_model import import_model
 from setup.prepare_reactions import set_exchanges_rxn_bounds, parse_rxns
@@ -7,7 +6,6 @@ from sampling.sample_functions import sample_time
 from iopy.export import write_sampling, extract_results
 import logging
 import argparse
-from cobra.sampling import sample
 
 MIN_VAL = 0
 MAX_VAL = 1
@@ -31,9 +29,9 @@ if __name__ == '__main__':
     parser.add_argument("-m", "--model", help="Metabolic model. Supported file formats: SBML, json, mat.")
     parser.add_argument("-n", "--nsamples", type=int, help="The number of samples")
     parser.add_argument("-p", "--processors", type=int, help="Number of processors")
-    parser.add_argument("-t", "--thinning", type=int, required=False, help="The thinning factor of the generated "
-                                                                           "sampling chain. A thinning of 10 means "
-                                                                           "samples are returned every 10 steps.")
+    parser.add_argument("-t", "--thinning", type=int, required=False, default=100,
+                        help="The thinning factor of the generated sampling chain. A thinning of 10 means "
+                             "samples are returned every 10 steps.")
     parser.add_argument("-o", "--outpath", help="Outfile path (without filename)")
     parser.add_argument("-k", "--ko", help="KO file containing reactions to KO, "
                                            "specify nothing if you want to sample WT", default=None)
@@ -85,7 +83,7 @@ if __name__ == '__main__':
     model_file = args.model
 
     # TEST
-    # model_file = "/home/juliette/these/data/models/test_samba/RECON1.xml"
+    # model_file = "/home/juliette/these/data/models/test_samba/Recon-2_from_matlab.xml"
 
     model = import_model(model_file)
     model.solver = args.solver
@@ -107,7 +105,7 @@ if __name__ == '__main__':
         if args.biomass != 0:
             model.reactions.biomass_reaction.lower_bound = optimise_wt(model, args.biomass)
         if not args.dryrun:
-            s = sample_time(model, args.nsamples, args.processors)
+            s = sample_time(model, args.nsamples, args.processors, args.thinning)
             s_results = extract_results
             write_sampling(s_results, args.outpath, args.model, args.nsamples)
     else:
@@ -122,7 +120,7 @@ if __name__ == '__main__':
             # SAMPLING WT
             # Now we need to run the WT sampling on the model with these bounds and objective value
             if not args.dryrun:
-                s = sample_time(model, args.nsamples, args.processors)
+                s = sample_time(model, args.nsamples, args.processors, args.thinning)
                 s_results = extract_results
                 write_sampling(s_results, args.outpath, args.model, args.nsamples, "WT")
 
@@ -137,12 +135,9 @@ if __name__ == '__main__':
                 # SAMPLING KO
                 # Now we need to run the KO sampling on the model with these bounds and objective value
                 if not args.dryrun:
-                    s = sample_time(model, args.nsamples, args.processors)
+                    s = sample_time(model, args.nsamples, args.processors, args.thinning)
                     s_results = extract_results
                     write_sampling(s_results, args.outpath, args.model, args.nsamples, "KO")
-
-
-
 
     # Trying to set the existing objective coeff to 0: not sure if it works yet
     # obj_rxn = model.reactions.get_by_id(str(model.objective.expression.args[0])[4:])
