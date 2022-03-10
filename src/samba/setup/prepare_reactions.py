@@ -17,7 +17,10 @@ def set_exchanges_rxn_bounds(model, exchange_min):
     return model
 
 
-def parse_ko_rxns(ko_filename):
-    with open(ko_filename, 'r') as ko_file:
-        ids_to_knockout = [i.strip().split(' ') for i in ko_file]
-    return ids_to_knockout
+def parse_rxns(filename):
+    if filename is None:
+        return None
+    with open(filename, 'r') as file:
+        ids = [i.strip().split(' ') for i in file]
+    return ids
+

@@ -4,18 +4,20 @@ Model type detection and import.
 
 from cobra import io
 from pathlib import Path
+import logging
+log = logging.getLogger(__name__)
 
 
 def get_model_type(model_file):
     file_format = Path(model_file).suffix
-    print("Detected " + file_format + " model.")
+    log.info("Detected " + file_format + " model.")
     if not (file_format == '.sbml' or file_format == '.xml' or file_format == '.json' or file_format == ".mat"):
         raise ValueError('Please use a json or sbml or mat file as your model.')
     return file_format
 
 
 def import_model(model_file):
-    print("Importing model...")
+    log.info("Importing model...")
     file_format = get_model_type(model_file)
     if file_format == ".xml":
         model = io.read_sbml_model(model_file)
