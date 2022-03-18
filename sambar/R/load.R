@@ -7,7 +7,7 @@
 #' (disease) and two different suffixes corresponding to the conditions, one of which must be "WT". 
 #' @param indir Path to the input dir, should contain a ko folder and wt folder if not using single.wt
 #' @param prefix Prefix of the two files you are inputting: should be the same for both
-#' @returns A list containing ko and wt dataframes of all samples
+#' @returns A list containing WT and MUT dataframes of all samples
 #' @importFrom tools file_path_sans_ext
 #' @importFrom stringr str_split
 #' @export

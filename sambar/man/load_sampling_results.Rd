@@ -12,7 +12,7 @@ load_sampling_results(indir, prefix)
 \item{prefix}{Prefix of the two files you are inputting: should be the same for both}
 }
 \value{
-A list containing ko and wt dataframes of all samples
+A list containing WT and MUT dataframes of all samples
 }
 \description{
 This function reads in two conditions of sampling data. It assumes that the two results files have the same prefix

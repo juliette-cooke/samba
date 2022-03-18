@@ -4,7 +4,7 @@
 \alias{calc_diff}
 \title{Calculate the difference between random pairs of flux samples}
 \usage{
-calc_diff(sdata, seed = NA, divfactor = 10)
+calc_diff(sdata, seed = NA, divfactor = 1)
 }
 \arguments{
 \item{sdata}{An sdata list containing c1 and c2 dataframes}
