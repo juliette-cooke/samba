@@ -8,8 +8,6 @@ calc_zscore(diff)
 }
 \arguments{
 \item{diff}{A "long" dataframe containing Metabs and diff values}
-
-\item{disease.code}{The 3-letter disease code for the current disease}
 }
 \value{
 A zscore dataframe containing zscores for each metabolite

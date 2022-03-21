@@ -4,14 +4,12 @@
 \alias{calc_diff}
 \title{Calculate the difference between random pairs of flux samples}
 \usage{
-calc_diff(sdata, seed = NA, divfactor = 1)
+calc_diff(sdata, seed = NA)
 }
 \arguments{
-\item{sdata}{An sdata list containing c1 and c2 dataframes}
+\item{sdata}{An sdata list containing WT and MUT dataframes}
 
 \item{seed}{A seed to set for reproducibility}
-
-\item{divfactor}{A division factor to divide the number of samples by for less intensive calculations}
 }
 \value{
 A "long" dataframe containing all diff samples for all metabolites

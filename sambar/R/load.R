@@ -36,7 +36,7 @@ load_sampling_results = function(indir, prefix) {
                ,data.table::fread(paste0(indir, c2.file)))
   names(sdata) = c(c1.name,c2.name)
   sdata = lapply(sdata, as.data.frame)
-  
+  gc()
   return(sdata)
 }
 
