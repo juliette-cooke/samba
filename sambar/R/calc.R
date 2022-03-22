@@ -112,3 +112,42 @@ calc_density = function(sdata){
   names(densities) = c("WT","MUT")
   return(densities)
 }
+
+
+#' Filter the metabolites based on their zscore
+#' 
+#' This function filters metabolites based on their previously calculated zscore using sdata.
+#' 
+#' @param sdata An sdata list containing WT and MUT dataframes
+#' @returns A means list containing WT and MUT mean dataframes
+#' @importFrom magrittr %>%
+#' @import dplyr
+#' @importFrom tibble rownames_to_column
+#' @export
+calc_filter_sdata = function(sdata, zscores, thr=2, max_n=10){
+  metabs_filtered = zscores %>% arrange(desc(abs(zscore))) %>%
+    slice_head(n = max_n) %>% filter(abs(zscore) > thr)
+  sdata_all_filtered = lapply(sdata, function(x) x %>% select(metabs_filtered$Metab))
+  return(sdata_all_filtered)
+}
+
+
+#' Filter the metabolites based on their zscore
+#' 
+#' This function filters metabolites based on their previously calculated zscore using densities.
+#' 
+#' @param sdata An sdata list containing WT and MUT dataframes
+#' @returns A means list containing WT and MUT mean dataframes
+#' @importFrom magrittr %>%
+#' @import dplyr
+#' @importFrom tibble rownames_to_column
+#' @export
+calc_filter_density = function(sdata, zscores, thr=2, max_n=10){
+  metabs_filtered = zscores %>% arrange(desc(abs(zscore))) %>%
+    slice_head(n = max_n) %>% filter(abs(zscore) > thr)
+  densities = calc_density(sdata)
+  d_all_filtered = lapply(densities, function(x) x)
+  d_all_filtered = list(densities$WT[names(densities$WT) %in% metabs_filtered$Metab],
+                             densities$MUT[names(densities$MUT) %in% metabs_filtered$Metab])
+  return(d_all_filtered)
+}
