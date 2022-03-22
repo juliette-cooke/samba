@@ -94,3 +94,21 @@ calc_sdata_means = function(sdata){
   names(means) = c("WT","MUT")
   return(means)
 }
+
+
+#' Calculate the densities of each metabolite in sdata
+#' 
+#' This function calculates the density for each column (=exchange reaction = metabolite).
+#' 
+#' @param sdata An sdata list containing WT and MUT dataframes
+#' @returns A means list containing WT and MUT mean dataframes
+#' @importFrom magrittr %>%
+#' @import dplyr
+#' @importFrom tibble rownames_to_column
+#' @export
+calc_density = function(sdata){
+  # Calculate densities for each metabolite's flux
+  densities = list(apply(sdata$WT, 2, density), apply(sdata$MUT, 2, density))
+  names(densities) = c("WT","MUT")
+  return(densities)
+}

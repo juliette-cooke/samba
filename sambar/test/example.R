@@ -60,4 +60,28 @@ ggplot(NULL, aes(x=t$x, y=t$y))+
 #   t$x,
 #   runif(10000))$y
 # hist(random.points, breaks = 100)
+path_to_folder = "/home/juliette/these/code/git/samba/data/"
+prefixes = c("xaa", "xab")
+zscores = list()
+d_all_filtered = list()
 
+i=1
+for (i in 1:length(prefixes)){
+  sdata = load_sampling_results(path_to_folder, prefixes[i])
+  diff = calc_diff(sdata)
+  gc()
+  zscores[[i]] = calc_zscore(diff)
+  names(zscores)[i] = prefixes[i]
+  
+  # Select filtered metabs
+  thr = 2
+  max_n = 10
+  metabs_filtered = zscores[[i]] %>% arrange(desc(abs(zscore))) %>%
+    slice_head(n = max_n) %>% filter(abs(zscore) > thr)
+  densities = calc_density(sdata)
+  d_all_filtered[[i]] = lapply(densities, function(x) x)
+  d_all_filtered[[i]] = list(densities$WT[names(densities$WT) %in% metabs_filtered$Metab],
+                        densities$MUT[names(densities$MUT) %in% metabs_filtered$Metab])
+  names(d_all_filtered)[i] = prefixes[i]
+  names(d_all_filtered[i][[prefixes[i]]]) = c("WT", "MUT")
+}

@@ -51,7 +51,7 @@ plot_multi_distrib = function(sdata_filtered, thr, max_n=10){
   #thr = 2
   #max_n = 10
   #sdata_filtered = sdata_all_filtered
-  i=1
+  #i=1
   sdata_filter = data.frame()
   n = length(sdata_filtered)
   for(i in 1:n){
@@ -72,6 +72,56 @@ plot_multi_distrib = function(sdata_filtered, thr, max_n=10){
     xlab("Flux value")
 }
 
+
+#' Plot multiple density distributions
+#' 
+#' Compare WT and MUT flux distributions for the top set of zscore metabolites for multiple diseases using filtered 
+#' densities as inputs instead of raw sdata.
+#' 
+#' @param densities_filt A list containing a WT list and a MUT list. Each list contains X densities for metabolites
+#' @param zscore A dataframe of zscore calculated using calc_zscore
+#' @importFrom magrittr %>%
+#' @importFrom dplyr mutate select
+#' @importFrom tidyr pivot_longer
+#' @import ggplot2
+#' @importFrom ggh4x facet_nested_wrap
+#' @export
+plot_multi_density_distrib = function(densities_filt, thr=2, max_n=10){
+  #thr = 2
+  #max_n = 10
+  #densities_filt = d_all_filtered
+  #i=1
+  d_filter = list()
+  n = length(densities_filt)
+  for(i in 1:n){
+    # Extract x and y from the density objects and pivot into long format 
+    temp = rbind(cbind(as.data.frame(lapply(densities_filt[[i]]$WT, function(x) x$x),check.names=F) %>%
+      pivot_longer(cols = everything(),names_to = "Metab", values_to = "xvalue"), 
+      as.data.frame(lapply(densities_filt[[i]]$WT, function(x) x$y),check.names=F) %>%
+        pivot_longer(cols = everything(),names_to = "Metab", values_to = "yvalue") %>% select(yvalue))%>%
+      mutate(Type = "WT"),
+    # Do the same for MUT
+    cbind(as.data.frame(
+      lapply(densities_filt[[i]]$MUT, function(x) x$x),check.names=F) %>%
+        pivot_longer(cols = everything(),names_to = "Metab", values_to = "xvalue"), 
+      as.data.frame(lapply(densities_filt[[i]]$MUT, function(x) x$y),check.names=F) %>%
+        pivot_longer(cols = everything(),names_to = "Metab", values_to = "yvalue") %>% select(yvalue))%>%
+      mutate(Type = "MUT")) %>%
+    # Add a column with the disease name
+      mutate(Case = names(densities_filt)[i])
+  
+    d_filter = rbind(d_filter, temp)
+  }
+
+  d_filter %>%
+    ggplot(aes(x=xvalue,y=yvalue, fill=Type, ymin = 0, ymax = yvalue))+
+    geom_ribbon(alpha=0.6)+
+    facet_nested_wrap(~Case + Metab, nrow = n, scales = "free")+
+    theme_minimal()+
+    ggtitle(paste0(paste0("Top flux sampling distributions filtered with a z-score threshold of ",thr)))+
+    ylab("")+
+    xlab("Flux value")
+}
 
 #' Plot a basic demo distribution
 #' 
