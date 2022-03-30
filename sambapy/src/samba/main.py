@@ -3,9 +3,10 @@ from iopy.read_model import import_model
 from setup.prepare_reactions import set_exchanges_rxn_bounds, parse_rxns
 from sampling.wtopt import wtopt_r2, optimise_wt
 from sampling.sample_functions import sample_time
-from iopy.export import write_sampling, extract_results
+from iopy.export import write_sampling, extract_results, export_metab_dict
 import logging
 import argparse
+import pandas as pd
 
 MIN_VAL = 0
 MAX_VAL = 1
@@ -40,6 +41,8 @@ if __name__ == '__main__':
     parser.add_argument("-q", "--quiet", action="store_true", help="Use this flag to silence INFO logging.")
     parser.add_argument("-d", "--debug", action="store_true", help="Use this flag to turn on DEBUG logging.")
     parser.add_argument("--dryrun", action="store_true", help="Use this flag to run the code without running sampling.")
+    parser.add_argument("--createmetabdict", type=str, help="Add a path to create and write a metabolite ID to name "
+                                                            "dictionary from the imported model.", default=None)
     parser.add_argument("--log", help="Log file path + filename. Set to None to output to console.",
                         default=None)
     parser.add_argument("-b", "--biomass", type=range_limited_float_type,
@@ -86,6 +89,14 @@ if __name__ == '__main__':
     # model_file = "/home/juliette/these/data/models/test_samba/Recon-2_from_matlab.xml"
 
     model = import_model(model_file)
+    # Write the metab dict if requested
+    # metab_dict_path = "/home/juliette/these/code/git/samba/test_data/Recon-2_from_matlab_metab_id_name.tsv"
+    metab_dict_path = args.createmetabdict
+    if metab_dict_path is not None:
+        metab_dict = export_metab_dict(model)
+        pd.DataFrame.from_dict(metab_dict, orient="index").to_csv(metab_dict_path, sep="\t", header=["Name"],
+                                                                  index_label="ID")
+
     model.solver = args.solver
 
     eps = 0.05

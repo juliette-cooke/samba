@@ -18,3 +18,14 @@ def extract_results(s, results,):
         results_columns = parse_rxns(results)
     s_results = s[results_columns].round(3)
     return s_results
+
+
+def export_metab_dict(model):
+    # Create a metabolite ID to name dict for plotting in R
+    metab_dict = {}
+    for ex_rxn in model.exchanges:
+        if len(next(iter(ex_rxn.metabolites)).name) < 30:
+            metab_dict[ex_rxn.id] = next(iter(ex_rxn.metabolites)).name
+        else:
+            metab_dict[ex_rxn.id] = next(iter(ex_rxn.metabolites)).id[:-3]
+    return metab_dict

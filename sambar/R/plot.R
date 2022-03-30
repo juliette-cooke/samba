@@ -27,7 +27,8 @@ plot_distrib = function(sdata, zscore, thr, max_n=10, case="Disease"){
   sdata_filter %>%
     ggplot(aes(x=value, fill=Type))+
     geom_density(alpha = 0.5, colour=NA)+
-    facet_wrap(~Metab,nrow = 1, scales = "free")+
+    # facet_wrap(~Metab,nrow = 1, scales = "free")+
+    facet_wrap(~Metab,nrow = 1, scales = "free_y")+
     theme_minimal()+
     ggtitle(paste0(paste0("Top ",max_n," flux sampling distributions filtered with a z-score threshold of ",thr)))+
     ylab(case)+
@@ -86,7 +87,7 @@ plot_multi_distrib = function(sdata_filtered, thr, max_n=10){
 #' @import ggplot2
 #' @importFrom ggh4x facet_nested_wrap
 #' @export
-plot_multi_density_distrib = function(densities_filt, thr=2, max_n=10){
+plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=10){
   #thr = 2
   #max_n = 10
   #densities_filt = d_all_filtered
@@ -112,16 +113,54 @@ plot_multi_density_distrib = function(densities_filt, thr=2, max_n=10){
   
     d_filter = rbind(d_filter, temp)
   }
-
+  
+  cases = unique(d_filter$Case)
+  case_min_max = data.frame(Case = unique(d_filter$Case))
+  case_min_max$min = lapply(case_min_max$Case, function(x) min(d_filter$xvalue[d_filter$Case == x]))
+  case_min_max$max = lapply(case_min_max$Case, function(x) max(d_filter$xvalue[d_filter$Case == x]))
+  x_scales = list()
+  # Create custom x scales for each case, regardless of the number of cases
+  for(i in 1:length(cases)){
+    x_scales = append(x_scales, 
+           as.formula(paste0("Case == \"", cases[i], 
+           "\" ~ scale_x_continuous(limits = c(", 
+           unlist(case_min_max$min[case_min_max$Case == cases[i]]),",", 
+           unlist(case_min_max$max[case_min_max$Case == cases[i]]),"))")))
+  }
+  
+  # lapply(zscores, function(x) x$Case = names(x))
+  # for (i in 1:length(zscores)){
+  #   zscores[[i]]["Case"] = names(zscores)[i] 
+  # }
+  
+  metabs = d_filter %>%
+    group_by(Case) %>%
+    summarise("Metab" = unique(Metab))
+  
+  zscores_filt = semi_join(bind_rows(zscores), metabs)
+  zscores_filt$colour = lapply(zscores_filt$zscore, function(x) if (x < 0) "blue" else "red")
+  
+  # Convert exchange reaction IDs to metabolite names for the plot
+  metab_map = as.vector(metab_dict$Name)
+  names(metab_map) = metab_dict$ID
+  d_filter$Metab = str_replace_all(string=d_filter$Metab, pattern= fixed(metab_map))
+  zscores_filt$Metab = str_replace_all(string=zscores_filt$Metab, pattern= fixed(metab_map))
+  
+  
   d_filter %>%
     ggplot(aes(x=xvalue,y=yvalue, fill=Type, ymin = 0, ymax = yvalue))+
     geom_ribbon(alpha=0.6)+
-    facet_nested_wrap(~Case + Metab, nrow = n, scales = "free")+
+    facet_nested_wrap(~Case + Metab, nrow = n, scales = "free", nest_line = element_line())+
     theme_minimal()+
     ggtitle(paste0(paste0("Top flux sampling distributions filtered with a z-score threshold of ",thr)))+
-    ylab("")+
-    xlab("Flux value")
+    ylab("Density")+
+    xlab("Flux value")+
+    facetted_pos_scales(x = x_scales)+
+    geom_vline(xintercept = 0, size = 0.2)+
+    geom_text(data=zscores_filt, mapping = aes(col=colour),label=paste0("z-score= ",round(zscores_filt$zscore,digits = 2)), x=Inf, y=Inf, 
+              inherit.aes = F, hjust = 1, vjust = 1, size = 3)
 }
+
 
 #' Plot a basic demo distribution
 #' 

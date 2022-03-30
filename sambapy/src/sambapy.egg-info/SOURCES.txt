@@ -1,0 +1,9 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+src/sambapy.egg-info/PKG-INFO
+src/sambapy.egg-info/SOURCES.txt
+src/sambapy.egg-info/dependency_links.txt
+src/sambapy.egg-info/requires.txt
+src/sambapy.egg-info/top_level.txt

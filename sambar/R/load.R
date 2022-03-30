@@ -40,6 +40,44 @@ load_sampling_results = function(indir, prefix) {
   return(sdata)
 }
 
+#' Read in two conditions of sampling data within a Shiny app
+#' 
+#' This function reads in two conditions of sampling data. It assumes that the two results files have the same prefix 
+#' (disease) and two different suffixes corresponding to the conditions, one of which must be "WT". 
+#' @param indir Path to the input dir, should contain a ko folder and wt folder if not using single.wt
+#' @param prefix Prefix of the two files you are inputting: should be the same for both
+#' @returns A list containing WT and MUT dataframes of all samples
+#' @importFrom tools file_path_sans_ext
+#' @importFrom stringr str_split
+#' @export
+load_shiny_sampling_results = function(filepath, prefix) {
+  #indir="/home/juliette/these/code/git/samba/data/"
+  #prefix="xaa"
+  # List all files in the dir
+  files = list.files(indir)
+  # Get the files corresponding to the input disease code
+  c1.file = files[startsWith(files, prefix)][1]
+  c2.file = files[startsWith(files, prefix)][2]
+  
+  c1.name.split = unlist(str_split(file_path_sans_ext(c1.file, compression = T), "_"))
+  c1.name = c1.name.split[length(c1.name.split)]
+  c2.name.split = unlist(str_split(file_path_sans_ext(c2.file, compression = T), "_"))
+  c2.name = c2.name.split[length(c2.name.split)]
+  if(c1.name == "WT"){
+    c2.name = "MUT"
+  }else if(c2.name == "WT"){
+    c1.name = "MUT"
+  }else{
+    stop("You did not supply files with the correct names. One file must have WT as a suffix.")
+  }
+  
+  sdata = list(data.table::fread(paste0(indir, c1.file))
+               ,data.table::fread(paste0(indir, c2.file)))
+  names(sdata) = c(c1.name,c2.name)
+  sdata = lapply(sdata, as.data.frame)
+  gc()
+  return(sdata)
+}
 
 #' Read in KO and WT sampling data
 #' 
