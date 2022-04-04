@@ -128,11 +128,6 @@ plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=1
            unlist(case_min_max$max[case_min_max$Case == cases[i]]),"))")))
   }
   
-  # lapply(zscores, function(x) x$Case = names(x))
-  # for (i in 1:length(zscores)){
-  #   zscores[[i]]["Case"] = names(zscores)[i] 
-  # }
-  
   metabs = d_filter %>%
     group_by(Case) %>%
     summarise("Metab" = unique(Metab))
@@ -160,6 +155,7 @@ plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=1
     geom_text(data=zscores_filt, mapping = aes(col=colour),label=paste0("z-score= ",round(zscores_filt$zscore,digits = 2)), x=Inf, y=Inf, 
               inherit.aes = F, hjust = 1, vjust = 1, size = 3)
 }
+
 
 
 #' Plot a basic demo distribution
@@ -196,10 +192,11 @@ plot_basic_distrib = function(){
 #' @importFrom tidyr gather pivot_longer
 #' @importFrom ggforce facet_zoom
 #' @importFrom tibble rownames_to_column
-#' @importFrom viridis scale_colour_viridis
+#' @importFrom viridis scale_colour_viridis inferno
+#' @import ggrepel
 #' @import ggplot2
 #' @export
-plot_scatter = function(sdata, zscore, means,thr, case="Disease"){
+plot_scatter = function(sdata, zscore, means, metab_dict, thr, case="Disease"){
   # Join the zscore with the means
   z_m = zscore %>% left_join(., means$WT , by="Metab") %>% left_join(., means$MUT , by="Metab")
   
@@ -212,19 +209,36 @@ plot_scatter = function(sdata, zscore, means,thr, case="Disease"){
   z_breaks_thr = c(z_breaks, thr, -thr)
   z_labels = c(z_breaks, paste0(" thr=",thr), paste0("-thr=", -thr))
   
+  metab_map = as.vector(metab_dict$Name)
+  names(metab_map) = metab_dict$ID
+  z_m_filtered$Metab = str_replace_all(string=z_m_filtered$Metab, pattern= fixed(metab_map))
+  
+  z_m_filtered = z_m_filtered %>%
+    mutate(label_col = case_when(zscore>0 ~ "black",
+                                 zscore<0 ~ "white"))
+  
+  quantile(z_m_filtered$mean_WT, probs= seq(0,1, 0.1))
+  quantile(z_m_filtered$mean_MUT, probs= seq(0,1, 0.1))
+  
   z_m_filtered %>% 
-    ggplot(aes(x=mean_WT, y=mean_MUT, colour=zscore))+
-    geom_point(size = 4, alpha = 0.8)+
+    ggplot(aes(x=mean_WT, y=mean_MUT, fill=zscore))+
+    annotate("rect", xmin = -Inf, xmax = 0, ymin = -Inf, ymax = 0, fill = "white", alpha=0.5)+
+    annotate("rect", xmin = 0, xmax = Inf, ymin = -Inf, ymax = 0, fill = "lightgrey", alpha=0.5)+
+    annotate("rect", xmin = -Inf, xmax = 0, ymin = 0, ymax = Inf, fill = "lightgrey", alpha=0.5)+
+    annotate("rect", xmin = 0, xmax = Inf, ymin = 0, ymax = Inf, fill = "white", alpha=0.5)+
+    geom_point( size = 4, pch=21, colour = "black")+
     geom_abline(intercept = 0, linetype = "dashed")+
     # coord_cartesian(xlim = c(min(min(z_m_filtered$mean_WT),min(z_m_filtered$mean_MUT)), 
     #        max(max(z_m_filtered$mean_WT),max(z_m_filtered$mean_MUT))),
     #        ylim = c(min(min(z_m_filtered$mean_WT),min(z_m_filtered$mean_MUT)), 
     #        max(max(z_m_filtered$mean_WT),max(z_m_filtered$mean_MUT))))+
     facet_zoom(xlim = c(-1,1), ylim = c(-1,1))+
-    scale_colour_viridis(option = "magma", breaks = z_breaks_thr, labels= z_labels)+
+    scale_fill_gradientn(colours = c(inferno(n=7, direction = 1), inferno(n=7, direction = -1)), breaks = z_breaks_thr, labels= z_labels)+
     theme_light()+
     ggtitle(paste0("WT mean fluxes vs KO mean fluxes for ", case))+
     xlab("WT mean flux")+
-    ylab("KO mean flux")
+    ylab("KO mean flux")+
+    geom_text_repel(aes(label=Metab), colour = "black", box.padding = 0.5,min.segment.length = 0.6)
+    # geom_label_repel(aes(label=Metab,fill=zscore), color= z_m_filtered$label_col)
   
 }

@@ -4,7 +4,7 @@
 \alias{plot_multi_density_distrib}
 \title{Plot multiple density distributions}
 \usage{
-plot_multi_density_distrib(densities_filt, thr = 2, max_n = 10)
+plot_multi_density_distrib(densities_filt, metab_dict, thr = 2, max_n = 10)
 }
 \arguments{
 \item{densities_filt}{A list containing a WT list and a MUT list. Each list contains X densities for metabolites}

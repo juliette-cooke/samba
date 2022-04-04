@@ -1,6 +1,11 @@
 library(sambar)
 library(cowplot)
 library(tidyverse)
+library(tools)
+
+# Read in metab dict for the specific model
+metab_dict = read.csv("/home/juliette/these/code/git/samba/test_data/Recon-2_from_matlab_metab_id_name.tsv", sep = "\t")
+
 
 # To import one disease (two files)
 sdata = load_sampling_results("/home/juliette/these/code/git/samba/data/", "xaa")
@@ -10,7 +15,23 @@ zscore = calc_zscore(diff)
 gc()
 means = calc_sdata_means(sdata)
 plot_distrib(sdata, zscore, thr=2, max_n = 10)
-plot_scatter(sdata, zscore, means, thr=1)
+plot_scatter(sdata, zscore, metab_dict = metab_dict, means, thr=1)
+
+
+# Create a loop producing scatter plots
+# Automatically parse the prefixes
+indir="/home/juliette/these/code/git/samba/data/"
+files = list.files(indir)
+prefixes = unlist(unique(lapply(files, function(x) unlist(str_split(file_path_sans_ext(x, compression = T), "_"))[1])))
+for (i in 1:length(prefixes)){
+  sdata = load_sampling_results("/home/juliette/these/code/git/samba/data/", prefixes[i])
+  diff = calc_diff(sdata)
+  zscore = calc_zscore(diff)
+  gc()
+  means = calc_sdata_means(sdata)
+  plot_scatter(sdata, zscore, metab_dict = metab_dict, means, thr=1)
+  ggsave(paste0("/home/juliette/these/code/git/samba/test_plots/",prefixes[i], "_scatterplot.png"),width = 15, height = 10)
+}
 
 
 # To plot more than one disease in 1 figure
