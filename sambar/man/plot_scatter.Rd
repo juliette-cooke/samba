@@ -4,7 +4,16 @@
 \alias{plot_scatter}
 \title{Plot a scatter plot of WT means vs MUT means}
 \usage{
-plot_scatter(sdata, zscore, means, metab_dict, thr, case = "Disease")
+plot_scatter(
+  sdata,
+  zscore,
+  means,
+  metab_dict,
+  thr,
+  case = "Disease",
+  outlier.dist = 5,
+  outlier.count = 0
+)
 }
 \arguments{
 \item{sdata}{A list containing a WT dataframe and a MUT dataframe. Each dataframe contains X samples for metabolites}

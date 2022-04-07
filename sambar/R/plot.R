@@ -85,7 +85,8 @@ plot_multi_distrib = function(sdata_filtered, thr, max_n=10){
 #' @importFrom dplyr mutate select
 #' @importFrom tidyr pivot_longer
 #' @import ggplot2
-#' @importFrom ggh4x facet_nested_wrap
+#' @import gtable
+#' @importFrom ggh4x facet_nested_wrap facetted_pos_scales
 #' @export
 plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=10){
   #thr = 2
@@ -115,25 +116,27 @@ plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=1
   }
   
   cases = unique(d_filter$Case)
-  case_min_max = data.frame(Case = unique(d_filter$Case))
-  case_min_max$min = lapply(case_min_max$Case, function(x) min(d_filter$xvalue[d_filter$Case == x]))
-  case_min_max$max = lapply(case_min_max$Case, function(x) max(d_filter$xvalue[d_filter$Case == x]))
-  x_scales = list()
-  # Create custom x scales for each case, regardless of the number of cases
-  for(i in 1:length(cases)){
-    x_scales = append(x_scales, 
-           as.formula(paste0("Case == \"", cases[i], 
-           "\" ~ scale_x_continuous(limits = c(", 
-           unlist(case_min_max$min[case_min_max$Case == cases[i]]),",", 
-           unlist(case_min_max$max[case_min_max$Case == cases[i]]),"))")))
-  }
+  # case_min_max = data.frame(Case = unique(d_filter$Case))
+  # case_min_max$min = lapply(case_min_max$Case, function(x) min(d_filter$xvalue[d_filter$Case == x]))
+  # case_min_max$max = lapply(case_min_max$Case, function(x) max(d_filter$xvalue[d_filter$Case == x]))
+  # x_scales = list()
+  # # Create custom x scales for each case, regardless of the number of cases
+  # for(i in 1:length(cases)){
+  #   x_scales = append(x_scales, 
+  #          as.formula(paste0("Case == \"", cases[i], 
+  #          "\" ~ scale_x_continuous(limits = c(", 
+  #          unlist(case_min_max$min[case_min_max$Case == cases[i]]),",", 
+  #          unlist(case_min_max$max[case_min_max$Case == cases[i]]),"))")))
+  # }
   
+  # Join the metabs with zscores and add colour for the plot
   metabs = d_filter %>%
     group_by(Case) %>%
     summarise("Metab" = unique(Metab))
   
-  zscores_filt = semi_join(bind_rows(zscores), metabs)
-  zscores_filt$colour = lapply(zscores_filt$zscore, function(x) if (x < 0) "blue" else "red")
+  zscores_filt=zscores %>% bind_rows(.id = "Case") %>%
+    semi_join(.,metabs) %>%
+    mutate(colour = lapply(zscore, function(x) if (x < 0) "blue" else "red"))
   
   # Convert exchange reaction IDs to metabolite names for the plot
   metab_map = as.vector(metab_dict$Name)
@@ -141,19 +144,75 @@ plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=1
   d_filter$Metab = str_replace_all(string=d_filter$Metab, pattern= fixed(metab_map))
   zscores_filt$Metab = str_replace_all(string=zscores_filt$Metab, pattern= fixed(metab_map))
   
+  # Get number of cases for n. of rows for the plot
+  n_cases = length(cases)
+  n_rows = n_cases + 2
+  # Create gtable object
+  g = gtable(widths = unit(c(1,6,1), c("lines", "null", "null")),
+             heights = unit(c(1,rep(1,n_cases),1), c("line",rep("null",n_cases), "line")))
+  # Add titles
+  title = paste0("Top flux sampling distributions filtered with a z-score threshold of ",thr)
+  g = gtable_add_grob(g, textGrob(title), t=1,b=1,l=2,r=2)
+  g = gtable_add_grob(g, textGrob("Flux value"), t=n_rows ,b=n_rows ,l=2,r=2)
+  g = gtable_add_grob(g, textGrob("Density", rot=90), t=1,b=n_rows ,l=1,r=1)
   
-  d_filter %>%
+  # Create a temp plot to extract the legend
+  gp = d_filter %>% filter(Case == cases[1]) %>%
     ggplot(aes(x=xvalue,y=yvalue, fill=Type, ymin = 0, ymax = yvalue))+
-    geom_ribbon(alpha=0.6)+
-    facet_nested_wrap(~Case + Metab, nrow = n, scales = "free", nest_line = element_line())+
-    theme_minimal()+
-    ggtitle(paste0(paste0("Top flux sampling distributions filtered with a z-score threshold of ",thr)))+
-    ylab("Density")+
-    xlab("Flux value")+
-    facetted_pos_scales(x = x_scales)+
-    geom_vline(xintercept = 0, size = 0.2)+
-    geom_text(data=zscores_filt, mapping = aes(col=colour),label=paste0("z-score= ",round(zscores_filt$zscore,digits = 2)), x=Inf, y=Inf, 
-              inherit.aes = F, hjust = 1, vjust = 1, size = 3)
+    geom_ribbon(alpha=0.6)
+  # Extract the legend
+  guide = gtable_filter(ggplotGrob(gp), pattern="guide")
+  # Add the legend to the table object
+  g = gtable_add_grob(g,guide , t=1,b=n_rows,l=3,r=3)
+  
+  # Loop over all cases
+  for(c in 1:length(cases)){
+    # Filter for the current case
+    zscores_c = zscores_filt %>% filter(Case == cases[c])
+    d_filter_c = d_filter %>% filter(Case == cases[c])
+    # Change the factor levels so that the metabolites are plotted from highest zscore to lowest (absolute)
+    d_filter_c$Metab <- factor(d_filter_c$Metab, levels = zscores_c %>% arrange(desc(abs(zscore))) %>% pull(Metab))
+    
+    # Create a plot for the current case
+    gp = d_filter_c %>%
+      ggplot(aes(x=xvalue,y=yvalue, fill=Type, ymin = 0, ymax = yvalue))+
+      geom_ribbon(alpha=0.6)+
+      facet_nested_wrap(Case ~ factor(Metab), nrow =1, scales = "free_y", strip.position = "top", nest_line = element_line())+
+      theme_minimal()+
+      geom_vline(xintercept = 0, size = 0.2)+
+      geom_text(data=zscores_c, mapping = aes(col=colour),
+                label=paste0("z-score= ",round(zscores_c$zscore,digits = 2)), x=Inf, y=Inf,
+                inherit.aes = F, hjust = 1, vjust = 1, size = 3)+ 
+      # Remove titles, axis labels and legend since we've already added them in the main plot
+      labs(title = element_blank())+ 
+      theme(axis.title.x = element_blank())+ 
+      theme(axis.title.y = element_blank())+ 
+      theme(legend.position="none")
+    
+    # Add the plot panel to table object
+    g <- gtable_add_grob(g,ggplotGrob(gp), t=(c+1),b=(c+1),l=2,r=2)
+    
+  }
+  
+  # Plot
+  grid.newpage()
+  grid.draw(g)
+  
+  # 
+  # d_filter %>%
+  #   ggplot(aes(x=xvalue,y=yvalue, fill=Type, ymin = 0, ymax = yvalue))+
+  #   geom_ribbon(alpha=0.6)+
+    # facet_nested_wrap(~Case + Metab, nrow = n, ncol = max(zscores_filt%>%group_by(Case) %>%count(Case)%>%pull(n)) , 
+    #                   scales = "free", nest_line = element_line(),trim_blank = T)+
+    # facet_manual(~Metab, design, scales = "free", )+
+    # theme_minimal()+
+    # ggtitle(paste0(paste0("Top flux sampling distributions filtered with a z-score threshold of ",thr)))+
+    # ylab("Density")+
+    # xlab("Flux value")
+    # facetted_pos_scales(x = x_scales)+
+    # geom_vline(xintercept = 0, size = 0.2)+
+    # geom_text(data=zscores_filt, mapping = aes(col=colour),label=paste0("z-score= ",round(zscores_filt$zscore,digits = 2)), x=Inf, y=Inf, 
+    #           inherit.aes = F, hjust = 1, vjust = 1, size = 3)
 }
 
 
@@ -196,7 +255,7 @@ plot_basic_distrib = function(){
 #' @import ggrepel
 #' @import ggplot2
 #' @export
-plot_scatter = function(sdata, zscore, means, metab_dict, thr, case="Disease"){
+plot_scatter = function(sdata, zscore, means, metab_dict, thr, case="Disease", outlier.dist=5, outlier.count=0){
   # Join the zscore with the means
   z_m = zscore %>% left_join(., means$WT , by="Metab") %>% left_join(., means$MUT , by="Metab")
   
@@ -204,10 +263,13 @@ plot_scatter = function(sdata, zscore, means, metab_dict, thr, case="Disease"){
   # Filter the zscore based on the provided threshold
   z_m_filtered = z_m %>% filter(zscore > thr | zscore < -thr)
   # Create the breaks for the legend
-  z_breaks = round(seq(from=min(z_m_filtered$zscore), to=max(z_m_filtered$zscore),by=5))
-  z_breaks = z_breaks[abs(z_breaks-thr) > 4]
+  z_max = max(abs(z_m_filtered$zscore))
+  z_breaks = round(seq(from=-z_max, to=z_max,by=z_max/2))
+  z_breaks = z_breaks[abs(z_breaks-thr) > 0.9]
   z_breaks_thr = c(z_breaks, thr, -thr)
   z_labels = c(z_breaks, paste0(" thr=",thr), paste0("-thr=", -thr))
+  # Create the scale limits for the legend so that the scale gradient is symmetrical
+  z_limits = c(min(z_breaks),max(z_breaks))
   
   metab_map = as.vector(metab_dict$Name)
   names(metab_map) = metab_dict$ID
@@ -216,9 +278,23 @@ plot_scatter = function(sdata, zscore, means, metab_dict, thr, case="Disease"){
   z_m_filtered = z_m_filtered %>%
     mutate(label_col = case_when(zscore>0 ~ "black",
                                  zscore<0 ~ "white"))
+  # Check for outliers
+  all_zscores = c(z_m_filtered$mean_WT, z_m_filtered$mean_MUT)
+  q_z = quantile(all_zscores)
+  iqr_z = IQR(all_zscores)
+  # More relaxed bounds: used for plotting
+  z_thr_upper_med = (iqr_z * 1.5) + q_z[4]
+  z_thr_lower_med = q_z[2] - (iqr_z * 1.5)
+  # Stricter bounds: used for the actual check
+  z_thr_upper = (iqr_z * 3) + q_z[4]
+  z_thr_lower = q_z[2] - (iqr_z * 3)
+  # If there are any values further than 5 from the upper quantile check, add a zoom
+  if (sum(unlist(lapply(all_zscores, function(x) abs(x-z_thr_upper))) > outlier.dist) > outlier.count){
+    zoom = T
+  }else{
+    zoom = F
+  }
   
-  quantile(z_m_filtered$mean_WT, probs= seq(0,1, 0.1))
-  quantile(z_m_filtered$mean_MUT, probs= seq(0,1, 0.1))
   
   z_m_filtered %>% 
     ggplot(aes(x=mean_WT, y=mean_MUT, fill=zscore))+
@@ -227,18 +303,18 @@ plot_scatter = function(sdata, zscore, means, metab_dict, thr, case="Disease"){
     annotate("rect", xmin = -Inf, xmax = 0, ymin = 0, ymax = Inf, fill = "lightgrey", alpha=0.5)+
     annotate("rect", xmin = 0, xmax = Inf, ymin = 0, ymax = Inf, fill = "white", alpha=0.5)+
     geom_point( size = 4, pch=21, colour = "black")+
-    geom_abline(intercept = 0, linetype = "dashed")+
-    # coord_cartesian(xlim = c(min(min(z_m_filtered$mean_WT),min(z_m_filtered$mean_MUT)), 
-    #        max(max(z_m_filtered$mean_WT),max(z_m_filtered$mean_MUT))),
-    #        ylim = c(min(min(z_m_filtered$mean_WT),min(z_m_filtered$mean_MUT)), 
-    #        max(max(z_m_filtered$mean_WT),max(z_m_filtered$mean_MUT))))+
-    facet_zoom(xlim = c(-1,1), ylim = c(-1,1))+
-    scale_fill_gradientn(colours = c(inferno(n=7, direction = 1), inferno(n=7, direction = -1)), breaks = z_breaks_thr, labels= z_labels)+
+    geom_abline(intercept = 0, linetype = "dashed")+ {
+      if (zoom == T){
+        facet_zoom(xlim = c(z_thr_lower_med,z_thr_upper_med), ylim = c(z_thr_lower_med,z_thr_upper_med))
+      }
+    }+
+    scale_fill_gradientn(colours = c(inferno(n=7, direction = 1), inferno(n=7, direction = -1)), 
+                         breaks = z_breaks_thr, labels= z_labels,
+                         limits = z_limits)+
     theme_light()+
     ggtitle(paste0("WT mean fluxes vs KO mean fluxes for ", case))+
     xlab("WT mean flux")+
     ylab("KO mean flux")+
     geom_text_repel(aes(label=Metab), colour = "black", box.padding = 0.5,min.segment.length = 0.6)
-    # geom_label_repel(aes(label=Metab,fill=zscore), color= z_m_filtered$label_col)
   
 }
