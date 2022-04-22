@@ -1,6 +1,7 @@
 # Functions for plotting
 
-#' Plot distributions
+
+#' Plot distributions for 1 case from raw samples
 #' 
 #' Compare WT and MUT flux distributions for the top set of zscore metabolites.
 #' 
@@ -10,33 +11,62 @@
 #' @param max_n The max number of metabolites to show
 #' @param case The name of the disease or condition
 #' @importFrom magrittr %>%
-#' @importFrom dplyr left_join slice_head filter arrange select mutate 
-#' @importFrom tidyr gather pivot_longer
+#' @importFrom dplyr select mutate 
+#' @importFrom tidyr pivot_longer
+#' @importFrom ggh4x facet_nested_wrap
 #' @import ggplot2
 #' @export
 plot_distrib = function(sdata, zscore, thr, max_n=10, case="Disease"){
   #thr = 2
   #max_n = 10
-  top_metab_zscore = zscore %>% arrange(desc(abs(zscore))) %>%
-    slice_head(n = max_n) %>% filter(abs(zscore) > thr)
+  top_metab_zscore = filter_zscore(zscore, thr, max_n)
+  top_metab_zscore = top_metab_zscore%>%
+    mutate(colour = lapply(zscore, function(x) if (x < 0) "blue" else "red"))
   
   sdata_filter = rbind(sdata$WT %>% select(top_metab_zscore$Metab) %>% mutate(Type = "WT"),
                        sdata$MUT %>% select(top_metab_zscore$Metab) %>% mutate(Type = "MUT")) %>%
     pivot_longer(-Type, names_to = "Metab")
   
-  sdata_filter %>%
+  # Change the factor levels so that the metabolites are plotted from highest zscore to lowest (absolute)
+  sdata_filter$Metab <- factor(sdata_filter$Metab, levels = top_metab_zscore %>% arrange(desc(abs(zscore))) 
+                               %>% pull(Metab))
+  
+  gp = sdata_filter %>% mutate(Case = case) %>%
     ggplot(aes(x=value, fill=Type))+
     geom_density(alpha = 0.5, colour=NA)+
-    # facet_wrap(~Metab,nrow = 1, scales = "free")+
-    facet_wrap(~Metab,nrow = 1, scales = "free_y")+
     theme_minimal()+
-    ggtitle(paste0(paste0("Top ",max_n," flux sampling distributions filtered with a z-score threshold of ",thr)))+
-    ylab(case)+
+    geom_vline(xintercept = 0, size = 0.2)+
+    facet_nested_wrap(Case ~ factor(Metab), nrow =1, scales = "free_y", strip.position = "top", 
+                      nest_line = element_line())+
+    geom_text(data=top_metab_zscore, mapping = aes(col=colour),
+              label=paste0("z-score= ",round(top_metab_zscore$zscore,digits = 2)), x=Inf, y=Inf,
+              inherit.aes = F, hjust = 1, vjust = 1, size = 3)+
+    ggtitle(paste0(paste0("Top ",max_n," flux sampling distributions filtered with a z-score threshold of ",thr,
+                          " for ",case)))+
+    ylab("Density")+
     xlab("Flux value")
+  
+  return(gp)
+}
+
+#' Plot a basic demo distribution
+#' 
+#' Compare WT and MUT flux distributions for the top set of zscore metabolites for an example disease.
+#' 
+#' @export
+plot_demo_distrib = function(){
+  # Generate hypothetical data
+  example_d = list(
+    "WT"=data.frame("MET_X"=rnorm(5000, 0, 1)), 
+    "MUT"=data.frame("MET_X"=rnorm(5000, 4, 1)))
+  zscore = data.frame(Metab="MET_X", zscore=2.5)
+  
+  plot_distrib(example_d, zscore,thr = 2,case = "Example")
 }
 
 
-#' Plot multiple distributions
+
+#' Plot multiple distributions from raw samples
 #' 
 #' Compare WT and MUT flux distributions for the top set of zscore metabolites for multiple diseases.
 #' 
@@ -74,25 +104,26 @@ plot_multi_distrib = function(sdata_filtered, thr, max_n=10){
 }
 
 
-#' Plot multiple density distributions
+#' Plot multiple density distributions for different diseases
 #' 
 #' Compare WT and MUT flux distributions for the top set of zscore metabolites for multiple diseases using filtered 
 #' densities as inputs instead of raw sdata.
 #' 
-#' @param densities_filt A list containing a WT list and a MUT list. Each list contains X densities for metabolites
-#' @param zscore A dataframe of zscore calculated using calc_zscore
+#' @param densities_filt A list of case lists, each containing a WT list and a MUT list. Each WT and MUT list contains
+#'  X densities for metabolites
+#' @param metab_dict A dataframe containing an ID column and a name column. This is useful for converting metabolite IDs
+#' to readable names. It can be generated using sambapy from the metabolic model.
+#' @param thr A numeric threshold. This will be used in the title for plotting purposes only.
 #' @importFrom magrittr %>%
 #' @importFrom dplyr mutate select
 #' @importFrom tidyr pivot_longer
+#' @import grid
 #' @import ggplot2
 #' @import gtable
 #' @importFrom ggh4x facet_nested_wrap facetted_pos_scales
 #' @export
-plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=10){
-  #thr = 2
-  #max_n = 10
+plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2){
   #densities_filt = d_all_filtered
-  #i=1
   d_filter = list()
   n = length(densities_filt)
   for(i in 1:n){
@@ -116,26 +147,13 @@ plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=1
   }
   
   cases = unique(d_filter$Case)
-  # case_min_max = data.frame(Case = unique(d_filter$Case))
-  # case_min_max$min = lapply(case_min_max$Case, function(x) min(d_filter$xvalue[d_filter$Case == x]))
-  # case_min_max$max = lapply(case_min_max$Case, function(x) max(d_filter$xvalue[d_filter$Case == x]))
-  # x_scales = list()
-  # # Create custom x scales for each case, regardless of the number of cases
-  # for(i in 1:length(cases)){
-  #   x_scales = append(x_scales, 
-  #          as.formula(paste0("Case == \"", cases[i], 
-  #          "\" ~ scale_x_continuous(limits = c(", 
-  #          unlist(case_min_max$min[case_min_max$Case == cases[i]]),",", 
-  #          unlist(case_min_max$max[case_min_max$Case == cases[i]]),"))")))
-  # }
-  
   # Join the metabs with zscores and add colour for the plot
   metabs = d_filter %>%
     group_by(Case) %>%
     summarise("Metab" = unique(Metab))
   
   zscores_filt=zscores %>% bind_rows(.id = "Case") %>%
-    semi_join(.,metabs) %>%
+    semi_join(.,metabs, by=c("Case", "Metab")) %>%
     mutate(colour = lapply(zscore, function(x) if (x < 0) "blue" else "red"))
   
   # Convert exchange reaction IDs to metabolite names for the plot
@@ -197,45 +215,8 @@ plot_multi_density_distrib = function(densities_filt, metab_dict, thr=2, max_n=1
   # Plot
   grid.newpage()
   grid.draw(g)
-  
-  # 
-  # d_filter %>%
-  #   ggplot(aes(x=xvalue,y=yvalue, fill=Type, ymin = 0, ymax = yvalue))+
-  #   geom_ribbon(alpha=0.6)+
-    # facet_nested_wrap(~Case + Metab, nrow = n, ncol = max(zscores_filt%>%group_by(Case) %>%count(Case)%>%pull(n)) , 
-    #                   scales = "free", nest_line = element_line(),trim_blank = T)+
-    # facet_manual(~Metab, design, scales = "free", )+
-    # theme_minimal()+
-    # ggtitle(paste0(paste0("Top flux sampling distributions filtered with a z-score threshold of ",thr)))+
-    # ylab("Density")+
-    # xlab("Flux value")
-    # facetted_pos_scales(x = x_scales)+
-    # geom_vline(xintercept = 0, size = 0.2)+
-    # geom_text(data=zscores_filt, mapping = aes(col=colour),label=paste0("z-score= ",round(zscores_filt$zscore,digits = 2)), x=Inf, y=Inf, 
-    #           inherit.aes = F, hjust = 1, vjust = 1, size = 3)
 }
 
-
-
-#' Plot a basic demo distribution
-#' 
-#' Compare WT and MUT flux distributions for the top set of zscore metabolites for multiple diseases.
-#' 
-#' @importFrom magrittr %>%
-#' @importFrom tidyr pivot_longer
-#' @import ggplot2
-#' @export
-plot_basic_distrib = function(){
-  example_d = data.frame(WT=rnorm(5000, 0, 1), MUT=rnorm(5000, 4, 1))
-  example_d %>% pivot_longer(cols = c(WT,MUT),names_to = "Type", values_to = "value") %>%
-    ggplot(aes(x=value, fill=Type))+
-    geom_density(alpha = 0.5, colour=NA)+
-    theme_minimal()+
-    theme(plot.margin = unit(c(0,0,0,0), "cm"))+
-    ggtitle(paste0("Example flux sampling distributions for metabolite X"))+
-    ylab("")+
-    xlab("Flux value")
-}
 
 #' Plot a scatter plot of WT means vs MUT means
 #' 
@@ -244,8 +225,13 @@ plot_basic_distrib = function(){
 #' 
 #' @param sdata A list containing a WT dataframe and a MUT dataframe. Each dataframe contains X samples for metabolites
 #' @param zscore A dataframe of zscore calculated using calc_zscore
+#' @param means A dataframe of means calculated using calc_sdata_means
+#' @param metab_dict A dataframe containing an ID column and a name column. This is useful for converting metabolite IDs
+#' to readable names. It can be generated using sambapy from the metabolic model.
 #' @param thr The threshold for filtering zscores
 #' @param case The name of the disease or condition
+#' @param outlier.dist The distance over which a metabolite is considered an outlier for plotting purposes.
+#' @param outlier.count The minimum number of outliers there needs to be for a plot zoom to be added.
 #' @importFrom magrittr %>%
 #' @import dplyr
 #' @importFrom tidyr gather pivot_longer
@@ -258,8 +244,6 @@ plot_basic_distrib = function(){
 plot_scatter = function(sdata, zscore, means, metab_dict, thr, case="Disease", outlier.dist=5, outlier.count=0){
   # Join the zscore with the means
   z_m = zscore %>% left_join(., means$WT , by="Metab") %>% left_join(., means$MUT , by="Metab")
-  
-  #thr = 1
   # Filter the zscore based on the provided threshold
   z_m_filtered = z_m %>% filter(zscore > thr | zscore < -thr)
   # Create the breaks for the legend

@@ -20,3 +20,20 @@ filter_all_density = function(d_all, zscores, thr=2, max_n=10){
   }
   return(d_all_filtered)
 }
+
+
+#' Filter the metabolites based on their zscore
+#' 
+#' This function filters metabolites based on their previously calculated zscore and density.
+#' 
+#' @param d_all A list containing WT and MUT dataframes
+#' @returns A means list containing WT and MUT mean dataframes
+#' @importFrom magrittr %>%
+#' @import dplyr
+#' @importFrom tibble rownames_to_column
+#' @export
+filter_zscore = function(zscore, thr=2, max_n=10){
+  top_metab_zscore = zscore %>% arrange(desc(abs(zscore))) %>%
+    slice_head(n = max_n) %>% filter(abs(zscore) > thr)
+  return(top_metab_zscore)
+}
