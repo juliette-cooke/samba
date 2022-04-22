@@ -1,0 +1,15 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto&display=swap');
+body {
+    font-family: 'Roboto', sans-serif;
+}
+
+.shiny-notification {
+            height: 80px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 15px;
+            color: rgb(0,0,0);
+            background-color: rgb(95,155,213);
+            border-color: rgb(205,205,205);
+            border-radius: 20px;
+            margin-left: -450px !important;
+          }
