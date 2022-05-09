@@ -302,3 +302,45 @@ plot_scatter = function(sdata, zscore, means, metab_dict, thr, case="Disease", o
     geom_text_repel(aes(label=Metab), colour = "black", box.padding = 0.5,min.segment.length = 0.6)
   
 }
+
+
+#' Plot a histogram of z-scores
+#' 
+#' Plots a histogram of z-scores and highlights the z-scores above the threshold.
+#' 
+#' @param zscore A dataframe of zscore calculated using calc_zscore
+#' @param metab_dict A dataframe containing an ID column and a name column. This is useful for converting metabolite IDs
+#' to readable names. It can be generated using sambapy from the metabolic model.
+#' @param thr The threshold for filtering zscores
+#' @param case The name of the disease or condition
+#' @importFrom magrittr %>%
+#' @import dplyr
+#' @importFrom cowplot theme_minimal_grid
+#' @import ggrepel
+#' @import ggplot2
+#' @export
+plot_zscore_distrib = function(zscore, metab_dict, thr, case="Disease", binwidth = 0.1, labels = T){
+  #thr = 1
+  metab_map = as.vector(metab_dict$Name)
+  names(metab_map) = metab_dict$ID
+  zscore$Metab = str_replace_all(string=zscore$Metab, pattern= fixed(metab_map))
+  
+  bins = ceiling(length(zscore$zscore[!is.na(zscore$zscore)]) * binwidth)
+  zscore_df = zscore %>% mutate(colour = ifelse(abs(zscore) > thr, "above", "below")) %>%
+    mutate(bins = as.factor(as.numeric(cut(zscore, bins))))
+  label_df = zscore_df %>% filter(colour == "above") %>% left_join(zscore_df, by = c('bins', "colour")) %>% 
+    group_by(zscore = zscore.x, Metab = Metab.x) %>% count
+
+  zscore_df %>%
+    ggplot(aes(x=zscore)) +
+    geom_histogram(aes(fill = colour), binwidth = binwidth,na.rm = T)+
+    scale_fill_manual(values = c("red", "grey"), name = "abs(zscore)", labels = c(paste0(">", thr),
+                                                                                  paste0( "\u2264", thr)))+
+    theme_minimal_grid()+
+    ylab("Counts")+
+    xlab("Z-score")+
+    ggtitle(paste0("Z-score distributions for ", case))+
+    geom_label_repel(data=label_df, aes(label = ifelse(rep(labels==T,length(label_df$Metab)),Metab, ""), y=n), min.segment.length = 0,nudge_y = 5)+
+    theme(plot.title = element_text(size = 15))
+        
+}

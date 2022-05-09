@@ -2,14 +2,18 @@
 % Please edit documentation in R/plot.R
 \name{plot_multi_density_distrib}
 \alias{plot_multi_density_distrib}
-\title{Plot multiple density distributions}
+\title{Plot multiple density distributions for different diseases}
 \usage{
-plot_multi_density_distrib(densities_filt, metab_dict, thr = 2, max_n = 10)
+plot_multi_density_distrib(densities_filt, metab_dict, thr = 2)
 }
 \arguments{
-\item{densities_filt}{A list containing a WT list and a MUT list. Each list contains X densities for metabolites}
+\item{densities_filt}{A list of case lists, each containing a WT list and a MUT list. Each WT and MUT list contains
+X densities for metabolites}
 
-\item{zscore}{A dataframe of zscore calculated using calc_zscore}
+\item{metab_dict}{A dataframe containing an ID column and a name column. This is useful for converting metabolite IDs
+to readable names. It can be generated using sambapy from the metabolic model.}
+
+\item{thr}{A numeric threshold. This will be used in the title for plotting purposes only.}
 }
 \description{
 Compare WT and MUT flux distributions for the top set of zscore metabolites for multiple diseases using filtered

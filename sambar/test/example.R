@@ -8,14 +8,16 @@ metab_dict = read.csv("/home/juliette/these/code/git/samba/test_data/Recon-2_fro
 
 
 # To import one disease (two files)
-sdata = load_sampling_results("/home/juliette/these/code/git/samba/data/", "xac")
+sdata = load_sampling_results("/home/juliette/these/code/git/samba/data/", "xaa")
 
 diff = calc_diff(sdata)
 zscore = calc_zscore(diff)
 gc()
 plot_distrib(sdata, zscore, thr=2, max_n = 10)
+ggsave(paste0("/home/juliette/these/code/git/samba/test_plots/single_disease/xaa_distrib.png"),width = 15, height = 10,bg = "white")
 means = calc_sdata_means(sdata)
 plot_scatter(sdata, zscore, metab_dict = metab_dict, means, thr=1,outlier.dist = 3)
+ggsave(paste0("/home/juliette/these/code/git/samba/test_plots/single_disease/xaa_scatterplot.png"),width = 15, height = 10)
 
 
 # Create a loop producing scatter plots for multiple diseases
@@ -91,3 +93,6 @@ thr = 2
 d_all_filtered = filter_all_density(d_all, zscores, thr = thr, max_n = 10)
 
 plot_multi_density_distrib(d_all_filtered, metab_dict, thr = thr)
+ggsave(paste0("/home/juliette/these/code/git/samba/test_plots/xaa_xab_xac_distrib.png"),width = 20, 
+       height = 20, bg="white")
+

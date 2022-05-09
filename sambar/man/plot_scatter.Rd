@@ -20,9 +20,18 @@ plot_scatter(
 
 \item{zscore}{A dataframe of zscore calculated using calc_zscore}
 
+\item{means}{A dataframe of means calculated using calc_sdata_means}
+
+\item{metab_dict}{A dataframe containing an ID column and a name column. This is useful for converting metabolite IDs
+to readable names. It can be generated using sambapy from the metabolic model.}
+
 \item{thr}{The threshold for filtering zscores}
 
 \item{case}{The name of the disease or condition}
+
+\item{outlier.dist}{The distance over which a metabolite is considered an outlier for plotting purposes.}
+
+\item{outlier.count}{The minimum number of outliers there needs to be for a plot zoom to be added.}
 }
 \description{
 Plots a scatter plot with WT flux means on the x-axis and MUT flux means on the y-axis. The points are coloured

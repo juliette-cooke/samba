@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{plot_multi_distrib}
 \alias{plot_multi_distrib}
-\title{Plot multiple distributions}
+\title{Plot multiple distributions from raw samples}
 \usage{
 plot_multi_distrib(sdata_filtered, thr, max_n = 10)
 }

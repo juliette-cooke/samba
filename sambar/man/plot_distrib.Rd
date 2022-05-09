@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{plot_distrib}
 \alias{plot_distrib}
-\title{Plot distributions}
+\title{Plot distributions for 1 case from raw samples}
 \usage{
 plot_distrib(sdata, zscore, thr, max_n = 10, case = "Disease")
 }
