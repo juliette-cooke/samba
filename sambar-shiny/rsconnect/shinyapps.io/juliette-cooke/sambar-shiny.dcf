@@ -1,0 +1,11 @@
+name: sambar-shiny
+title:
+username:
+account: juliette-cooke
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6262062
+bundleId: 5885736
+url: https://juliette-cooke.shinyapps.io/sambar-shiny/
+when: 1652081158.78955
+lastSyncTime: 1652081158.78957

@@ -4,6 +4,8 @@ library(stringr)
 library(data.table)
 library(sambar)
 library(ggplot2)
+library(dplyr)
+library(DT)
 
 options(shiny.maxRequestSize = 50*1024^2)
 
@@ -50,6 +52,8 @@ function(input, output, session){
       print("Done")
     }
   })
+  
+  # Disable file upload if using example data
   observeEvent(input$exchk, {
     if (input$exchk) {
       shinyjs::disable("sdatain")
@@ -58,9 +62,12 @@ function(input, output, session){
     else {
       shinyjs::enable("sdatain")}
   })
+  
+  # Necessary to load sdatain
   observe({
     req(input$sdatain)
     sdata()})
+  
   # Datatables to show once you've uploaded files
   observeEvent(list(input$datachk, input$exchk), {
     if (input$datachk) show("tables") else hide("tables")
@@ -100,6 +107,27 @@ function(input, output, session){
     list("diff"=diff, "zscore"=zscore)
     })
 
+  # Zscore table and histogram
+  output$zscoretable = renderDataTable(
+    {
+      metab_map = as.vector(m_dict()$Name)
+      names(metab_map) = m_dict()$ID
+      datatable(diff_z()$zscore %>% mutate(abszscore = round(abs(zscore), 2))%>%
+                  mutate(zscore = round(zscore,2)) %>%
+                  mutate(Metab = str_replace_all(string=diff_z()$zscore$Metab, pattern= fixed(metab_map))),
+                options = list(
+                  autoWidth = T,
+                  scrollX=T
+                ), rownames = F) %>%
+      formatStyle(columns="zscore",
+      backgroundColor = styleInterval(c(-input$thrslider, input$thrslider), c("red", "white", "red"))
+    )
+  })
+  
+  output$zscoredistrib = renderPlot({
+    plot_zscore_distrib(diff_z()$zscore, m_dict(), input$thrslider, binwidth = input$binwidthslider,
+                        labels = input$labelschk)
+  })
 
   # Plot distribs
   distrib = eventReactive(list(input$calcbutton, input$thrslider, input$maxn), {
@@ -160,13 +188,13 @@ function(input, output, session){
     }
   })
   
-
-  observeEvent(input$thr_numeric,{
-    updateSliderInput(session,"thrslider", value = input$thr_numeric)
-  }, ignoreInit = T)
-
-  observeEvent(input$thrslider,{
-    updateNumericInput(session,"thr_numeric", value = input$thrslider )
-  }, ignoreInit = T)
+  # Commented for now as it can create an infinite update loop
+  # observeEvent(input$thr_numeric,{
+  #   updateSliderInput(session,"thrslider", value = input$thr_numeric)
+  # }, ignoreInit = T)
+  # 
+  # observeEvent(input$thrslider,{
+  #   updateNumericInput(session,"thr_numeric", value = input$thrslider )
+  # }, ignoreInit = T)
 
 }

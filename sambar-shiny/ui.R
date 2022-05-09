@@ -10,6 +10,17 @@ library(flexdashboard)
 library(bsplus)
 source("theme.R", local = T)$value
 
+# css <- "
+# #reverseSlider .irs-bar, .irs-bar-edge{
+#     border-top: 1px solid #ddd;
+#     border-bottom: 1px solid #ddd;
+#     background: linear-gradient(to bottom, #DDD -50%, #FFF 150%);
+# }
+# #reverseSlider .irs-line, .irs-bar{
+#     background: #db2c35;
+#     border: 1px solid #db2c35;
+# }
+# "
 
 header <- dashboardHeader(title = "SAMBA: Sampling Biomarker Analysis")
 
@@ -69,10 +80,34 @@ body <- dashboardBody(
             h2("Calculate and plot differences between each WT and mut condition"),
             fluidPage(
               actionButton(inputId = "calcbutton", label = "Calculate and plot!"),
-              fluidRow(column(5,sliderInput(inputId = "thrslider",label = "Threshold",
-                                   min = 0, max = 10, value = 1, step = 0.1)),
-                       column(2,numericInput(inputId = "thr_numeric", label = "Threshold",value = 1, min =0,
-                                    max = 10)))
+              fluidRow(column(5,
+                              tags$style(
+                                HTML(
+                                  ".js-irs-0 .irs-single
+                                 {
+                                    background: #db2c35;
+                                 }
+                                .js-irs-0 .irs-bar, .js-irs-0 .irs-bar-edge{
+                                    border-top: 1px solid #ddd;
+                                    border-bottom: 1px solid #ddd;
+                                    background: linear-gradient(to bottom, #DDD -50%, #FFF 150%);
+                                }
+                                .js-irs-0 .irs-line{
+                                    background: #db2c35;
+                                    border: 1px solid #db2c35;
+                                }
+                                ")
+                              ),
+                              sliderInput(inputId = "thrslider",label = "Threshold",
+                                   min = 0, max = 10, value = 1, step = 0.1)%>% 
+                                shinyInput_label_embed(
+                                     icon("info-circle") %>%
+                                       bs_embed_tooltip(title = "Threshold for z-score cut-off. A higher threshold will 
+                                                        select only the strongest metabolite changes.", placement = "bottom")
+                                   ))
+                       # ,column(2,numericInput(inputId = "thr_numeric", label = "Threshold",value = 1, min =0,
+                       #              max = 10))
+                       )
               
               ,
               tabsetPanel(
@@ -84,14 +119,32 @@ body <- dashboardBody(
                          fluidRow(
                            column(4,materialSwitch("autozoom", label = "Automatic zoom", value = F, right = T, status = "primary")),
                            column(4,numericInput(inputId = "outlierdist", label = "Outlier distance", value = 3, 
-                                                        min = 0)),
+                                                        min = 0)%>% 
+                                    shinyInput_label_embed(
+                                      icon("info-circle") %>%
+                                        bs_embed_tooltip(title = "The distance from the upper quantile over which a 
+                                        metabolite is considered an outlier (for the autozoom).", placement = "bottom")
+                                    )),
                            column(4,numericInput(inputId = "outlierct", label = "Outlier count", value = 0, 
-                                                        min = 0))),
+                                                        min = 0)%>% 
+                                    shinyInput_label_embed(
+                                      icon("info-circle") %>%
+                                        bs_embed_tooltip(title = "The minimum number of outliers there needs to be for 
+                                                         autozoom to be added.", placement = "bottom")
+                                    ))),
                          plotOutput("scatterplot", dblclick = "scatter_dblc", brush = brushOpts(
                            id = "scatter_brush",
                            resetOnNew = TRUE
                          ))%>% withSpinner(color="#0dc5c1"),
                          ),
+                tabPanel(title = "Z-scores",
+                         fixedRow(column(5, dataTableOutput("zscoretable")),
+                                  column(5, sliderInput("binwidthslider", label = "Bin width",
+                                                        min = 0.1, max = 5, value = 0.1, step = 0.1),
+                                         materialSwitch("labelschk", label = "Show labels",value = F, 
+                                                           status = "primary", right = T),
+                                         plotOutput("zscoredistrib")))
+                         )
                 )
               )
             ),
